@@ -6,7 +6,33 @@ UNAME_R := $(shell uname -r)
 DOCKER_COMPOSE_VER := 1.25.0
 DOCKER_INSTALL_LOC := /usr/local/bin/docker-compose
 
-all: apt-deps docker docker-compose install-sgx-driver
+SGX_INSTALL_LOC := /opt/intel
+SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
+
+all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all
+
+.PHONY: linux-sgx-all
+linux-sgx-all: linux-sgx-sdk install-linux-sgx-sdk linux-sgx-psw install-linux-sgx-psw
+
+.PHONY: install-linux-sgx-psw
+install-linux-sgx-psw:
+	$(SUDO) dpkg -i ./linux-sgx/linux/installer/deb/*.deb
+
+.PHONY: install-linux-sgx-sdk
+install-linux-sgx-sdk:
+	$(SUDO) mkdir -p $(SGX_INSTALL_LOC)
+	$(SUDO) ./linux-sgx/linux/installer/bin/*.bin --prefix $(SGX_INSTALL_LOC)
+	cat ~/.bashrc | grep $(SOURCE_CMD) || echo $(SOURCE_CMD) >> ~/.bashrc
+
+.PHONY: linux-sgx-sdk
+linux-sgx-sdk: linux-sgx
+	make -C linux-sgx sdk
+	make -C linux-sgx sdk_install_pkg
+
+.PHONY: linux-sgx-psw
+linux-sgx-psw: linux-sgx
+	make -C linux-sgx psw
+	make -C linux-sgx deb_pkg
 
 linux-sgx:
 	git clone https://github.com/intel/linux-sgx.git
@@ -44,7 +70,9 @@ linux-sgx-driver:
 	# checkout sgx2 here if desired (not recommended for SCONE)
 
 .PHONY: docker-compose
-docker-compose:
+docker-compose: $(DOCKER_INSTALL_LOC)
+
+$(DOCKER_INSTALL_LOC):
 	$(SUDO) curl -L "https://github.com/docker/compose/releases/download/$(DOCKER_COMPOSE_VER)/docker-compose-$(shell uname -s)-$(shell uname -m)" \
 		-o $(DOCKER_INSTALL_LOC)
 	$(SUDO) chmod +x $(DOCKER_INSTALL_LOC)
@@ -80,4 +108,7 @@ apt-deps:
 		python \
 		libssl-dev \
 		libcurl4-openssl-dev \
-		libprotobuf-dev
+		libprotobuf-dev \
+		protobuf-compiler \
+		debhelper \
+		cmake
