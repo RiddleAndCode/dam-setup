@@ -21,11 +21,28 @@ SERVICE_FILE := /etc/systemd/system/dam.service
 
 RUST_ENV := $(HOME)/.cargo/env
 
-.PHONY: all
-all: default
+.PHONY: default
+default: help
 
 .PHONY: default
-default: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files service
+help:
+	@echo "TARGETS"
+	@echo ""
+	@echo "help               -> show this message"
+	@echo ""
+	@echo "apt-deps           -> install ubuntu package dependencies with 'apt-get'"
+	@echo "docker             -> install docker"
+	@echo "docker-compose     -> install docker-compose"
+	@echo "install-sgx-driver -> build/install the SGX driver"
+	@echo "linux-sgx-all      -> build/install SGX SDK and PSW"
+	@echo "dam-files          -> create the docker-compose, settings.json and run script for DAM"
+	@echo "service            -> create the systemd service and enable/start it"
+	@echo "all                -> do all of the above"
+	@echo ""
+	@echo "connect-wifi       -> connect to a wifi by WIFI_SSID and WIFI_PSWD"
+
+.PHONY: all
+all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files service
 
 .PHONY: dam-images
 dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
