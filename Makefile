@@ -9,6 +9,9 @@ DOCKER_INSTALL_LOC := /usr/local/bin/docker-compose
 SGX_INSTALL_LOC := /opt/intel
 SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
 
+WIFI_SSID ?= R3C-DEMO
+WIFI_PSWD ?= DEMO&R3C
+
 all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all
 
 .PHONY: linux-sgx-all
@@ -112,3 +115,15 @@ apt-deps:
 		protobuf-compiler \
 		debhelper \
 		cmake
+
+.PHONY: connect-wifi
+connect-wifi: connect-wifi-deps
+	$(SUDO) systemctl enable NetworkManager
+	$(SUDO) systemctl start NetworkManager
+	$(SUDO) nmcli device wifi rescan
+	$(SUDO) nmcli device wifi connect $(WIFI_SSID) password '$(WIFI_PSWD)'
+
+.PHONY: connect-wifi-deps
+connect-wifi-deps:
+	$(SUDO) apt-get update
+	$(SUDO) apt-get install -y network-manager
