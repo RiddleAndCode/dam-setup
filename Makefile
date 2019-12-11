@@ -1,3 +1,8 @@
+INSTALL_LOC := $(HOME)/dam
+
+WIFI_SSID ?= R3C-DEMO
+WIFI_PSWD ?= DEMO&R3C
+
 SUDO := sudo
 USER := $(shell whoami)
 UBUNTU_NAME := bionic
@@ -9,10 +14,30 @@ DOCKER_INSTALL_LOC := /usr/local/bin/docker-compose
 SGX_INSTALL_LOC := /opt/intel
 SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
 
-WIFI_SSID ?= R3C-DEMO
-WIFI_PSWD ?= DEMO&R3C
+RUST_ENV := $(HOME)/.cargo/env
 
-all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all
+.PHONY: all
+all: default
+
+.PHONY: default
+default: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files
+
+.PHONY: dam-files
+dam-files: $(INSTALL_LOC)/settings.json $(INSTALL_LOC)/docker-compose.yml
+
+$(INSTALL_LOC):
+	mkdir -p $(INSTALL_LOC)
+
+$(INSTALL_LOC)/settings.json: $(INSTALL_LOC) custodian-solution
+	cp custodian-solution/settings.json $(INSTALL_LOC)/settings.json
+
+$(INSTALL_LOC)/docker-compose.yml: $(RUST_ENV) $(INSTALL_LOC) custodian-solution
+	. $(RUST_ENV) && \
+		make -C custodian-solution compose
+	cp custodian-solution/docker-compose.yml $(INSTALL_LOC)/docker-compose.yml
+
+custodian-solution:
+	git clone -b release --recurse-submodules git@github.com:RiddleAndCode/custodian-solution.git
 
 .PHONY: linux-sgx-all
 linux-sgx-all: linux-sgx-sdk install-linux-sgx-sdk linux-sgx-psw install-linux-sgx-psw
@@ -115,6 +140,9 @@ apt-deps:
 		protobuf-compiler \
 		debhelper \
 		cmake
+
+$(RUST_ENV):
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 .PHONY: connect-wifi
 connect-wifi: connect-wifi-deps
