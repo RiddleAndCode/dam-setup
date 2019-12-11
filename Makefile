@@ -16,6 +16,7 @@ SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
 
 DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
 SETTINGS_FILE := $(INSTALL_LOC)/settings.json
+RUN_FILE := $(INSTALL_LOC)/run.sh
 
 RUST_ENV := $(HOME)/.cargo/env
 
@@ -31,7 +32,14 @@ dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
 	docker-compose -f $(DOCKER_COMPOSE_FILE) pull
 
 .PHONY: dam-files
-dam-files: $(SETTINGS_FILE) $(DOCKER_COMPOSE_FILE)
+dam-files: $(SETTINGS_FILE) $(DOCKER_COMPOSE_FILE) $(RUN_FILE)
+
+$(RUN_FILE): $(INSTALL_LOC)
+	cat templates/run.sh | \
+		sed "s/%DOCKER_COMPOSE_LOC%/$(subst /,\/,$(DOCKER_COMPOSE_LOC))/g" | \
+	       	sed "s/%DOCKER_COMPOSE_FILE%/$(subst /,\/,$(DOCKER_COMPOSE_FILE))/g" > \
+		$(RUN_FILE)
+	$(SUDO) chmod +x $(RUN_FILE)
 
 $(SETTINGS_FILE): $(INSTALL_LOC) custodian-solution
 	cp custodian-solution/settings.json $(SETTINGS_FILE)
