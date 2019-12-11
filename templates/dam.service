@@ -1,0 +1,12 @@
+[Unit]
+Description=DAM Service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+User=%USER%
+ExecStart=/usr/bin/env sh %RUN_FILE%
+
+[Install]
+WantedBy=multi-user.target

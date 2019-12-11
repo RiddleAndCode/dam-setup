@@ -17,6 +17,7 @@ SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
 DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
 SETTINGS_FILE := $(INSTALL_LOC)/settings.json
 RUN_FILE := $(INSTALL_LOC)/run.sh
+SERVICE_FILE := /etc/systemd/system/dam.service
 
 RUST_ENV := $(HOME)/.cargo/env
 
@@ -24,7 +25,7 @@ RUST_ENV := $(HOME)/.cargo/env
 all: default
 
 .PHONY: default
-default: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files
+default: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files service
 
 .PHONY: dam-images
 dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
@@ -54,6 +55,18 @@ $(INSTALL_LOC):
 
 custodian-solution:
 	git clone -b release --recurse-submodules git@github.com:RiddleAndCode/custodian-solution.git
+
+.PHONY: service
+service: dam-files $(SERVICE_FILE)
+	$(SUDO) systemctl start dam
+	$(SUDO) systemctl enable dam
+
+$(SERVICE_FILE):
+	cat templates/dam.service | \
+		sed "s/%USER%/$(USER)/g" | \
+		sed "s/%RUN_FILE%/$(subst /,\/,$(RUN_FILE))/g" > \
+		dam.service.tmp
+	$(SUDO) mv dam.service.tmp $(SERVICE_FILE)
 
 .PHONY: linux-sgx-all
 linux-sgx-all: linux-sgx-sdk install-linux-sgx-sdk linux-sgx-psw install-linux-sgx-psw
