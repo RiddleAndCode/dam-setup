@@ -9,10 +9,13 @@ UBUNTU_NAME := bionic
 UNAME_R := $(shell uname -r)
 
 DOCKER_COMPOSE_VER := 1.25.0
-DOCKER_INSTALL_LOC := /usr/local/bin/docker-compose
+DOCKER_COMPOSE_LOC := /usr/local/bin/docker-compose
 
 SGX_INSTALL_LOC := /opt/intel
 SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
+
+DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
+SETTINGS_FILE := $(INSTALL_LOC)/settings.json
 
 RUST_ENV := $(HOME)/.cargo/env
 
@@ -22,19 +25,24 @@ all: default
 .PHONY: default
 default: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files
 
+.PHONY: dam-images
+dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
+	docker login
+	docker-compose -f $(DOCKER_COMPOSE_FILE) pull
+
 .PHONY: dam-files
-dam-files: $(INSTALL_LOC)/settings.json $(INSTALL_LOC)/docker-compose.yml
+dam-files: $(SETTINGS_FILE) $(DOCKER_COMPOSE_FILE)
+
+$(SETTINGS_FILE): $(INSTALL_LOC) custodian-solution
+	cp custodian-solution/settings.json $(SETTINGS_FILE)
+
+$(DOCKER_COMPOSE_FILE): $(RUST_ENV) $(INSTALL_LOC) custodian-solution
+	. $(RUST_ENV) && \
+		make -C custodian-solution compose
+	cp custodian-solution/docker-compose.yml $(DOCKER_COMPOSE_FILE)
 
 $(INSTALL_LOC):
 	mkdir -p $(INSTALL_LOC)
-
-$(INSTALL_LOC)/settings.json: $(INSTALL_LOC) custodian-solution
-	cp custodian-solution/settings.json $(INSTALL_LOC)/settings.json
-
-$(INSTALL_LOC)/docker-compose.yml: $(RUST_ENV) $(INSTALL_LOC) custodian-solution
-	. $(RUST_ENV) && \
-		make -C custodian-solution compose
-	cp custodian-solution/docker-compose.yml $(INSTALL_LOC)/docker-compose.yml
 
 custodian-solution:
 	git clone -b release --recurse-submodules git@github.com:RiddleAndCode/custodian-solution.git
@@ -100,10 +108,10 @@ linux-sgx-driver:
 .PHONY: docker-compose
 docker-compose: $(DOCKER_INSTALL_LOC)
 
-$(DOCKER_INSTALL_LOC):
+$(DOCKER_COMPOSE_LOC):
 	$(SUDO) curl -L "https://github.com/docker/compose/releases/download/$(DOCKER_COMPOSE_VER)/docker-compose-$(shell uname -s)-$(shell uname -m)" \
-		-o $(DOCKER_INSTALL_LOC)
-	$(SUDO) chmod +x $(DOCKER_INSTALL_LOC)
+		-o $(DOCKER_COMPOSE_LOC)
+	$(SUDO) chmod +x $(DOCKER_COMPOSE_LOC)
 
 .PHONY: docker
 docker: docker-repo
