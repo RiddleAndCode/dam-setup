@@ -49,10 +49,13 @@ all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files u
 update-dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
 	docker login
 	docker-compose -f $(DOCKER_COMPOSE_FILE) pull
-	docker logout
+	# docker logout
 
 .PHONY: dam-files
-dam-files: $(SETTINGS_FILE) $(DOCKER_COMPOSE_FILE) $(RUN_FILE)
+dam-files: $(SETTINGS_FILE) $(DOCKER_COMPOSE_FILE) dam-scripts
+
+.PHONY: dam-files
+dam-scripts: $(RUN_FILE)
 
 $(RUN_FILE): $(INSTALL_LOC)
 	cat templates/run.sh | \
@@ -92,7 +95,7 @@ clean-custodian-solution:
 	fi
 
 .PHONY: service
-service: dam-files $(SERVICE_FILE)
+service: dam-scripts $(SERVICE_FILE)
 	$(SUDO) systemctl start dam
 	$(SUDO) systemctl enable dam
 

@@ -1,10 +1,12 @@
 [Unit]
 Description=DAM Service
+After=network.target
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
 Restart=always
+RestartSec=1
 User=%USER%
 ExecStart=/usr/bin/env sh %RUN_FILE%
 
