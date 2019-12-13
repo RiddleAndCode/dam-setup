@@ -36,18 +36,20 @@ help:
 	@echo "install-sgx-driver -> build/install the SGX driver"
 	@echo "linux-sgx-all      -> build/install SGX SDK and PSW"
 	@echo "dam-files          -> create the docker-compose, settings.json and run script for DAM"
+	@echo "update-dam-images  -> pull the newest images for the docke compose file"
 	@echo "service            -> create the systemd service and enable/start it"
 	@echo "all                -> do all of the above"
 	@echo ""
 	@echo "connect-wifi       -> connect to a wifi by WIFI_SSID and WIFI_PSWD"
 
 .PHONY: all
-all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files service
+all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files update-dam-images service
 
-.PHONY: dam-images
-dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
+.PHONY: update-dam-images
+update-dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
 	docker login
 	docker-compose -f $(DOCKER_COMPOSE_FILE) pull
+	docker logout
 
 .PHONY: dam-files
 dam-files: $(SETTINGS_FILE) $(DOCKER_COMPOSE_FILE) $(RUN_FILE)
@@ -70,8 +72,24 @@ $(DOCKER_COMPOSE_FILE): $(RUST_ENV) $(INSTALL_LOC) custodian-solution
 $(INSTALL_LOC):
 	mkdir -p $(INSTALL_LOC)
 
+.PHONY: clean-dam
+clean-dam:
+	if [ -d "$(INSTALL_LOC)" ]; then \
+		rm -rf $(INSTALL_LOC); \
+	fi
+
+.PHONY: rebuild-dam
+rebuild-dam: clean-dam clean-custodian-solution dam-files
+
+
 custodian-solution:
 	git clone -b release --recurse-submodules git@github.com:RiddleAndCode/custodian-solution.git
+
+.PHONY: clean-custodian-solution
+clean-custodian-solution:
+	if [ -d custodian-solution ]; then \
+		rm -rf custodian-solution; \
+	fi
 
 .PHONY: service
 service: dam-files $(SERVICE_FILE)
@@ -84,6 +102,15 @@ $(SERVICE_FILE):
 		sed "s/%RUN_FILE%/$(subst /,\/,$(RUN_FILE))/g" > \
 		dam.service.tmp
 	$(SUDO) mv dam.service.tmp $(SERVICE_FILE)
+
+.PHONY: clean-service
+clean-service:
+	$(SUDO) systemctl stop dam
+	$(SUDO) systemctl disable dam
+	$(SUDO) rm $(SERVICE_FILE)
+
+.PHONY: rebuild-service
+rebuild-service: clean-service service
 
 .PHONY: linux-sgx-all
 linux-sgx-all: linux-sgx-sdk install-linux-sgx-sdk linux-sgx-psw install-linux-sgx-psw
