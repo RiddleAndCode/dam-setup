@@ -175,7 +175,7 @@ linux-sgx-driver:
 	# checkout sgx2 here if desired (not recommended for SCONE)
 
 .PHONY: docker-compose
-docker-compose: $(DOCKER_INSTALL_LOC)
+docker-compose: $(DOCKER_COMPOSE_LOC)
 
 $(DOCKER_COMPOSE_LOC):
 	$(SUDO) curl -L "https://github.com/docker/compose/releases/download/$(DOCKER_COMPOSE_VER)/docker-compose-$(shell uname -s)-$(shell uname -m)" \
