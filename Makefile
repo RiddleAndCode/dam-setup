@@ -166,8 +166,9 @@ rebuild-sgx-driver: uninstall-sgx-driver clean-sgx-driver sgx-driver install-sgx
 
 sgx-driver: linux-sgx-driver/isgx.ko
 
-linux-sgx-driver/isgx.ko: linux-sgx-driver
+linux-sgx-driver/isgx.ko: linux-sgx-driver MOK.der
 	make -C linux-sgx-driver
+	kmodsign sha512 MOK.priv MOK.der linux-sgx-driver/isgx.ko
 
 linux-sgx-driver:
 	git clone https://github.com/intel/linux-sgx-driver.git
@@ -192,6 +193,13 @@ docker-repo:
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $(SUDO) apt-key add -
 	$(SUDO) add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(UBUNTU_NAME) stable"
 
+MOK.der:
+	openssl req -config ./openssl.cnf \
+		-new -x509 -newkey rsa:2048 \
+		-nodes -days 36500 -outform DER \
+		-keyout "MOK.priv" \
+		-out "MOK.der"
+
 .PHONY: apt-deps
 apt-deps:
 	$(SUDO) apt-get update
@@ -215,6 +223,7 @@ apt-deps:
 		libprotobuf-dev \
 		protobuf-compiler \
 		debhelper \
+		mokutil \
 		cmake
 
 $(RUST_ENV):
