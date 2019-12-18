@@ -2,3 +2,4 @@ linux-sgx
 linux-sgx-driver
 custodian-solution
 MOK.*
+.out

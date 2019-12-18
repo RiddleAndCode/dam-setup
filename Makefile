@@ -18,9 +18,16 @@ SGX_1_COMMIT := 5d6abcc3fed7bb7e6aff09814d9f692999abd4dc
 DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
 SETTINGS_FILE := $(INSTALL_LOC)/settings.json
 RUN_FILE := $(INSTALL_LOC)/run.sh
+UPDATE_FILE := $(INSTALL_LOC)/update.sh
 SERVICE_FILE := /etc/systemd/system/dam.service
 
 RUST_ENV := $(HOME)/.cargo/env
+
+SGX_PSW_VERSION := 2.7.1
+INTEL_DOWNLOAD_URL := https://download.01.org/intel-sgx/sgx-linux/$(SGX_PSW_VERSION)
+INTEL_DOWNLOAD_CHECKSUM := SHA256SUM_linux_$(SGX_PSW_VERSION)
+
+OUT_DIR := .out
 
 .PHONY: default
 default: help
@@ -34,8 +41,9 @@ help:
 	@echo "apt-deps           -> install ubuntu package dependencies with 'apt-get'"
 	@echo "docker             -> install docker"
 	@echo "docker-compose     -> install docker-compose"
+	@echo "import-mok-key     -> import new key for signing drivers"
 	@echo "install-sgx-driver -> build/install the SGX driver"
-	@echo "linux-sgx-all      -> build/install SGX SDK and PSW"
+	@echo "sgx-psw            -> build/install SGX PSW"
 	@echo "dam-files          -> create the docker-compose, settings.json and run script for DAM"
 	@echo "update-dam-images  -> pull the newest images for the docke compose file"
 	@echo "service            -> create the systemd service and enable/start it"
@@ -50,13 +58,13 @@ all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files u
 update-dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
 	docker login
 	docker-compose -f $(DOCKER_COMPOSE_FILE) pull
-	# docker logout
+	docker logout
 
 .PHONY: dam-files
 dam-files: $(SETTINGS_FILE) $(DOCKER_COMPOSE_FILE) dam-scripts
 
-.PHONY: dam-files
-dam-scripts: $(RUN_FILE)
+.PHONY: dam-scripts
+dam-scripts: $(RUN_FILE) $(UPDATE_FILE)
 
 $(RUN_FILE): $(INSTALL_LOC)
 	cat templates/run.sh | \
@@ -64,6 +72,13 @@ $(RUN_FILE): $(INSTALL_LOC)
 	       	sed "s/%DOCKER_COMPOSE_FILE%/$(subst /,\/,$(DOCKER_COMPOSE_FILE))/g" > \
 		$(RUN_FILE)
 	$(SUDO) chmod +x $(RUN_FILE)
+
+$(UPDATE_FILE): $(INSTALL_LOC)
+	cat templates/update.sh | \
+		sed "s/%DOCKER_COMPOSE_LOC%/$(subst /,\/,$(DOCKER_COMPOSE_LOC))/g" | \
+	       	sed "s/%DOCKER_COMPOSE_FILE%/$(subst /,\/,$(DOCKER_COMPOSE_FILE))/g" > \
+		$(UPDATE_FILE)
+	$(SUDO) chmod +x $(UPDATE_FILE)
 
 $(SETTINGS_FILE): $(INSTALL_LOC) custodian-solution
 	cp custodian-solution/settings.json $(SETTINGS_FILE)
@@ -116,33 +131,16 @@ clean-service:
 .PHONY: rebuild-service
 rebuild-service: clean-service service
 
-.PHONY: linux-sgx-all
-linux-sgx-all: linux-sgx-sdk install-linux-sgx-sdk linux-sgx-psw install-linux-sgx-psw
+.PHONY: sgx-psw
+sgx-psw: $(OUT_DIR) $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM)
+	for deb in $$(cat $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM) | grep ubuntu18.04 | grep deb | awk '{print $$2}'); do \
+		wget $(INTEL_DOWNLOAD_URL)/$$deb -O $(OUT_DIR)/$$(basename $$deb); \
+	done
+	sudo dpkg -i $(OUT_DIR)/*.deb;
+	sudo dpkg -i $(OUT_DIR)/*.ddeb;
 
-.PHONY: install-linux-sgx-psw
-install-linux-sgx-psw:
-	$(SUDO) dpkg -i ./linux-sgx/linux/installer/deb/*.deb
-	$(SUDO) dpkg -i ./linux-sgx/linux/installer/deb/*.ddeb
-
-.PHONY: install-linux-sgx-sdk
-install-linux-sgx-sdk:
-	$(SUDO) mkdir -p $(SGX_INSTALL_LOC)
-	$(SUDO) ./linux-sgx/linux/installer/bin/*.bin --prefix $(SGX_INSTALL_LOC)
-	cat ~/.bashrc | grep $(SOURCE_CMD) || echo $(SOURCE_CMD) >> ~/.bashrc
-
-.PHONY: linux-sgx-sdk
-linux-sgx-sdk: linux-sgx
-	make -C linux-sgx sdk
-	make -C linux-sgx sdk_install_pkg
-
-.PHONY: linux-sgx-psw
-linux-sgx-psw: linux-sgx
-	make -C linux-sgx psw
-	make -C linux-sgx deb_pkg
-
-linux-sgx:
-	git clone https://github.com/intel/linux-sgx.git
-	linux-sgx/download_prebuilt.sh
+$(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM): $(OUT_DIR)
+	wget $(INTEL_DOWNLOAD_URL)/$(INTEL_DOWNLOAD_CHECKSUM) -O $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM)
 
 .PHONY: install-sgx-driver
 install-sgx-driver: sgx-driver 
@@ -166,6 +164,7 @@ clean-sgx-driver:
 .PHONY: rebuild-sgx-driver
 rebuild-sgx-driver: uninstall-sgx-driver clean-sgx-driver sgx-driver install-sgx-driver
 
+.PHONY: sgx-driver
 sgx-driver: linux-sgx-driver/isgx.ko
 
 linux-sgx-driver/isgx.ko: linux-sgx-driver MOK.der
@@ -188,12 +187,20 @@ $(DOCKER_COMPOSE_LOC):
 docker: docker-repo
 	$(SUDO) apt-get -y install docker-ce
 	$(SUDO) usermod -aG docker $(USER)
-	newgrp docker
+	# newgrp docker
 
 .PHONY: docker-repo
 docker-repo:
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $(SUDO) apt-key add -
 	$(SUDO) add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(UBUNTU_NAME) stable"
+
+.PHONY: import-mok-key
+import-mok-key: $(OUT_DIR)/mok-key-imported
+
+$(OUT_DIR)/mok-key-imported: MOK.der $(OUT_DIR)
+	$(SUDO) mokutil --import MOK.der
+	touch $(OUT_DIR)/mok-key-imported
+	$(SUDO) reboot 
 
 MOK.der:
 	openssl req -config ./openssl.cnf \
@@ -213,20 +220,8 @@ apt-deps:
 		ca-certificates \
 		curl \
 		software-properties-common \
-		ocaml \
-		ocamlbuild \
-		automake \
-		autoconf \
-		libtool \
-		wget \
-		python \
-		libssl-dev \
-		libcurl4-openssl-dev \
 		libprotobuf-dev \
-		protobuf-compiler \
-		debhelper \
-		mokutil \
-		cmake
+		mokutil
 
 $(RUST_ENV):
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -242,3 +237,6 @@ connect-wifi: connect-wifi-deps
 connect-wifi-deps:
 	$(SUDO) apt-get update
 	$(SUDO) apt-get install -y network-manager
+
+$(OUT_DIR):
+	mkdir -p $(OUT_DIR);
