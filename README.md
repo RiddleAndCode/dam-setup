@@ -44,3 +44,8 @@ Run `make` for more info
     * `make dam-files`
     * `make update-dam-images`
     * `make service`
+
+## Secure Boot Driver Signing keys
+
+* At the end the MOK.priv key should be deleted
+    * If the SGX-driver needs to be updated revoke the old key (`sudo cat /proc/keys | grep riddle` and `sudo mokutil --revoke MOK.der`) and then generate and import a new mok key with `make import-mok-key`
