@@ -13,6 +13,7 @@ DOCKER_COMPOSE_LOC := /usr/local/bin/docker-compose
 
 SGX_INSTALL_LOC := /opt/intel
 SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
+SGX_1_COMMIT := 5d6abcc3fed7bb7e6aff09814d9f692999abd4dc
 
 DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
 SETTINGS_FILE := $(INSTALL_LOC)/settings.json
@@ -121,6 +122,7 @@ linux-sgx-all: linux-sgx-sdk install-linux-sgx-sdk linux-sgx-psw install-linux-s
 .PHONY: install-linux-sgx-psw
 install-linux-sgx-psw:
 	$(SUDO) dpkg -i ./linux-sgx/linux/installer/deb/*.deb
+	$(SUDO) dpkg -i ./linux-sgx/linux/installer/deb/*.ddeb
 
 .PHONY: install-linux-sgx-sdk
 install-linux-sgx-sdk:
@@ -172,7 +174,7 @@ linux-sgx-driver/isgx.ko: linux-sgx-driver MOK.der
 
 linux-sgx-driver:
 	git clone https://github.com/intel/linux-sgx-driver.git
-	# checkout sgx2 here if desired (not recommended for SCONE)
+	cd linux-sgx-driver && git checkout $(SGX_1_COMMIT) && cd ../
 
 .PHONY: docker-compose
 docker-compose: $(DOCKER_COMPOSE_LOC)
