@@ -136,7 +136,7 @@ rebuild-service: clean-service service
 
 .PHONY: dcap-pccs
 dcap-pccs: $(SGX_PCCS_LOC)/file.crt update-pccs-api-key qcnl-conf
-	$(SUDO) $(SGX_PCSS_LOC)/install.sh
+	$(SUDO) $(SGX_PCCS_LOC)/install.sh
 
 .PHONY: update-pccs-api-key
 update-pccs-api-key:
