@@ -1,5 +1,7 @@
 INSTALL_LOC := $(HOME)/dam
 
+PCCS_API_KEY := PCCS_API_KEY
+
 WIFI_SSID ?= R3C-DEMO
 WIFI_PSWD ?= DEMO&R3C
 
@@ -13,6 +15,7 @@ DOCKER_COMPOSE_LOC := /usr/local/bin/docker-compose
 
 SGX_INSTALL_LOC := /opt/intel
 SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
+SGX_PCCS_LOC := $(SGX_INSTALL_LOC)/libsgx-dcap-pccs
 SGX_1_COMMIT := 5d6abcc3fed7bb7e6aff09814d9f692999abd4dc
 
 DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
@@ -131,6 +134,21 @@ clean-service:
 .PHONY: rebuild-service
 rebuild-service: clean-service service
 
+.PHONY: dcap-pccs
+dcap-pccs: $(SGX_PCCS_LOC)/file.crt update-pccs-api-key qcnl-conf
+	$(SUDO) $(SGX_PCSS_LOC)/install.sh
+
+.PHONY: update-pccs-api-key
+update-pccs-api-key:
+	cat $(SGX_PCCS_LOC)/config/default.json | jq '.ApiKey = "$(PCCS_API_KEY)"' > default.json.tmp
+	-$(SUDO) rm $(SGX_PCCS_LOC)/config/default.json
+	$(SUDO) mv default.json.tmp $(SGX_PCCS_LOC)/config/default.json
+
+.PHONY: qcnl-conf
+qcnl-conf:
+	-$(SUDO) rm /etc/sgx_default_qcnl.conf
+	$(SUDO) cp templates/sgx_default_qcnl.conf /etc/sgx_default_qcnl.conf
+
 .PHONY: sgx-dcap
 sgx-dcap: $(OUT_DIR) $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM)
 	for deb in $$(cat $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM) | grep ubuntuServer18.04 | grep deb | awk '{print $$2}'); do \
@@ -161,6 +179,16 @@ $(OUT_DIR)/install_sdk: $(OUT_DIR) $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM)
 
 $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM): $(OUT_DIR)
 	wget $(INTEL_DOWNLOAD_URL)/$(INTEL_DOWNLOAD_CHECKSUM) -O $(OUT_DIR)/$(INTEL_DOWNLOAD_CHECKSUM)
+
+$(SGX_PCCS_LOC)/file.crt: $(OUT_DIR)/file.crt
+	$(SUDO) cp $(OUT_DIR)/private.pem $(SGX_PCCS_LOC)/private.pem
+	$(SUDO) cp $(OUT_DIR)/csr.pem $(SGX_PCCS_LOC)/csr.pem
+	$(SUDO) cp $(OUT_DIR)/file.crt $(SGX_PCCS_LOC)/file.crt
+
+$(OUT_DIR)/file.crt: $(OUT_DIR)
+	openssl genrsa 1024 > $(OUT_DIR)/private.pem
+	openssl req -config ./openssl.cnf -new -key $(OUT_DIR)/private.pem -out $(OUT_DIR)/csr.pem
+	openssl x509 -req -days 36500 -in $(OUT_DIR)/csr.pem -signkey $(OUT_DIR)/private.pem -out $(OUT_DIR)/file.crt
 
 .PHONY: docker-compose
 docker-compose: $(DOCKER_COMPOSE_LOC)
@@ -193,6 +221,7 @@ apt-deps:
 		ca-certificates \
 		npm \
 		nodejs \
+		jq \
 		curl \
 		software-properties-common \
 		libprotobuf-dev \
