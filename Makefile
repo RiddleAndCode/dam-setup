@@ -1,6 +1,6 @@
-INSTALL_LOC := $(HOME)/dam
+INSTALL_LOC ?= $(HOME)/dam
 
-PCCS_API_KEY := PCCS_API_KEY
+PCCS_API_KEY ?= PCCS_API_KEY
 
 WIFI_SSID ?= R3C-DEMO
 WIFI_PSWD ?= DEMO&R3C
@@ -44,18 +44,24 @@ help:
 	@echo "apt-deps           -> install ubuntu package dependencies with 'apt-get'"
 	@echo "docker             -> install docker"
 	@echo "docker-compose     -> install docker-compose"
-	@echo "import-mok-key     -> import new key for signing drivers"
-	@echo "install-sgx-driver -> build/install the SGX driver"
-	@echo "sgx-psw            -> build/install SGX PSW"
-	@echo "dam-files          -> create the docker-compose, settings.json and run script for DAM"
-	@echo "update-dam-images  -> pull the newest images for the docke compose file"
-	@echo "service            -> create the systemd service and enable/start it"
-	@echo "all                -> do all of the above"
+	@echo "sgx-driver         -> build/install the SGX driver (may require reboot for Secure Boot Keys)"
+	@echo "sgx-sdk            -> build/install SGX SDK"
+	@echo "sgx-dcap           -> build install SGX PSW / DCAP resources"
+	@echo "dcap-pccs          -> build install DCAP PCCS service using PCCS_API_KEY"
+	@echo "dam-files          -> create the DAM docker-compose file and scripts"
+	@echo "update-dam-images  -> downlaod the DAM docker images"
+	@echo "service            -> create the DAM systemd service and enable/start it"
+	@echo ""
+	@echo "part1              -> install process part 1 (do reboot afterwards)"
+	@echo "part2              -> install process part 2"
 	@echo ""
 	@echo "connect-wifi       -> connect to a wifi by WIFI_SSID and WIFI_PSWD"
 
-.PHONY: all
-all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files update-dam-images service
+.PHONY: part1
+part1: apt-deps docker docker-compose sgx-driver
+
+.PHONY: part2
+part2: sgx-driver sgx-sdk sgx-dcap dcap-pccs dam-files update-dam-images service
 
 .PHONY: update-dam-images
 update-dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)

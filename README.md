@@ -24,28 +24,20 @@ Run `make` for more info
 * `sudo apt install make`
 * `git clone git@github.com:RiddleAndCode/dam-setup.git`
 * `cd dam-setup`
-* `make apt-deps`
-* Install docker and docker-compose:
-    * `make docker`
-    * `make docker-compose`
-    * Log in and out for good measure
-    * `docker run hello-world` to test
-* Enroll Secure boot keys
-    * `make import-mok-key` (will reboot system)
-    * Select *Enroll*
-    * Select *Continue*
-    * Enter password
-    * Reboot
-    * `sudo cat /proc/keys | grep riddle` to test
-* Install SGX
-    * `make install-sgx-driver`
-    * `make sgx-psw`
-* Install DAM
-    * `make dam-files`
-    * `make update-dam-images`
-    * `make service`
-
-## Secure Boot Driver Signing keys
-
-* At the end the MOK.priv key should be deleted
-    * If the SGX-driver needs to be updated revoke the old key (`sudo cat /proc/keys | grep riddle` and `sudo mokutil --revoke MOK.der`) and then generate and import a new mok key with `make import-mok-key`
+* Part 1
+    * `make part1`
+    * May ask you to enter a MOK password for the Secure Boot configuration
+    * Enroll Secure boot keys if above step happened
+        * Reboot system (should enter into MOK screen)
+        * Select *Enroll*
+        * Select *Continue*
+        * Enter password
+        * Select *Reboot*
+* Part 2
+    * Get the PCCS API key from `https://api.portal.trustedservices.intel.com/`
+    * `PCCS_API_KEY=<API_KEY> make part2`
+* Verify Installation
+    * Reboot system
+    * Check DAM service status and logs
+        * `sudo service dam status`
+        * `journalctl -u dam.service`
