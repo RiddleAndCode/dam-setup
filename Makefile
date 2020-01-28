@@ -13,7 +13,6 @@ DOCKER_COMPOSE_LOC := /usr/local/bin/docker-compose
 
 SGX_INSTALL_LOC := /opt/intel
 SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
-SGX_1_COMMIT := 5d6abcc3fed7bb7e6aff09814d9f692999abd4dc
 
 DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
 SETTINGS_FILE := $(INSTALL_LOC)/settings.json
@@ -172,8 +171,7 @@ linux-sgx-driver/isgx.ko: linux-sgx-driver MOK.der
 	kmodsign sha512 MOK.priv MOK.der linux-sgx-driver/isgx.ko
 
 linux-sgx-driver:
-	git clone https://github.com/intel/linux-sgx-driver.git
-	cd linux-sgx-driver && git checkout $(SGX_1_COMMIT) && cd ../
+	git clone https://github.com/01org/linux-sgx-driver
 
 .PHONY: docker-compose
 docker-compose: $(DOCKER_COMPOSE_LOC)
