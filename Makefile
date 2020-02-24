@@ -51,6 +51,9 @@ help:
 	@echo "connect-wifi       -> connect to a wifi by WIFI_SSID and WIFI_PSWD"
 	@echo "install-desktop     -> install ubuntu desktop GUI"
 
+.PHONY: install-desktop
+install-desktop: sudo apt-get update && sudo apt-get install ubuntu-desktop
+
 .PHONY: all
 all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files update-dam-images service
 
@@ -239,6 +242,3 @@ connect-wifi-deps:
 
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR);
-
-.PHONY: install-desktop
-install-desktop: sudo apt-get update && sudo apt-get install ubuntu-desktop
