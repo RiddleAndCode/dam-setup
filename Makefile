@@ -56,12 +56,18 @@ help:
 	@echo "part2              -> install process part 2"
 	@echo ""
 	@echo "connect-wifi       -> connect to a wifi by WIFI_SSID and WIFI_PSWD"
+	@echo "install-desktop    -> install ubuntu desktop GUI"
 
 .PHONY: part1
 part1: apt-deps docker docker-compose sgx-driver
 
 .PHONY: part2
 part2: sgx-driver sgx-sdk sgx-dcap dcap-pccs dam-files update-dam-images service
+
+.PHONY: install-desktop
+install-desktop:
+	$(SUDO) apt-get update
+	$(SUDO) apt-get install -y ubuntu-desktop
 
 .PHONY: update-dam-images
 update-dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
