@@ -49,9 +49,15 @@ help:
 	@echo "all                -> do all of the above"
 	@echo ""
 	@echo "connect-wifi       -> connect to a wifi by WIFI_SSID and WIFI_PSWD"
+	@echo "install-desktop     -> install ubuntu desktop GUI"
 
 .PHONY: all
 all: apt-deps docker docker-compose install-sgx-driver linux-sgx-all dam-files update-dam-images service
+
+.PHONY: install-desktop
+install-desktop: 
+	$(SUDO) apt-get update
+	$(SUDO) apt-get install ubuntu-desktop
 
 .PHONY: update-dam-images
 update-dam-images: $(DOCKER_COMPOSE_FILE) $(DOCKER_COMPOSE_LOC)
