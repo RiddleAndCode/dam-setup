@@ -18,19 +18,19 @@ SOURCE_CMD := "source $(SGX_INSTALL_LOC)/sgxsdk/environment"
 SGX_PCCS_LOC := $(SGX_INSTALL_LOC)/libsgx-dcap-pccs
 SGX_1_COMMIT := 5d6abcc3fed7bb7e6aff09814d9f692999abd4dc
 
+DOCKER_COMPOSE_IN := docker-compose.yml
+SETTINGS_IN := settings.json
 DOCKER_COMPOSE_FILE := $(INSTALL_LOC)/docker-compose.yml
 SETTINGS_FILE := $(INSTALL_LOC)/settings.json
 RUN_FILE := $(INSTALL_LOC)/run.sh
 UPDATE_FILE := $(INSTALL_LOC)/update.sh
 SERVICE_FILE := /etc/systemd/system/dam.service
 
-RUST_ENV := $(HOME)/.cargo/env
-
 SGX_DCAP_VERSION := 1.3
 INTEL_DOWNLOAD_URL := https://download.01.org/intel-sgx/sgx-dcap/$(SGX_DCAP_VERSION)/linux
 INTEL_DOWNLOAD_CHECKSUM := SHA256SUM_dcap_$(SGX_DCAP_VERSION)
 
-OUT_DIR := .out
+OUT_DIR := .compiled
 
 .PHONY: default
 default: help
@@ -59,10 +59,13 @@ help:
 	@echo "install-desktop    -> install ubuntu desktop GUI"
 
 .PHONY: part1
-part1: apt-deps docker docker-compose sgx-driver
+part1: precheck apt-deps docker docker-compose sgx-driver
 
 .PHONY: part2
-part2: sgx-driver sgx-sdk sgx-dcap dcap-pccs dam-files update-dam-images service
+part2: precheck sgx-driver sgx-sdk sgx-dcap dcap-pccs dam-files update-dam-images service
+
+.PHONY: precheck
+precheck: $(DOCKER_COMPOSE_IN) $(SETTINGS_IN)
 
 .PHONY: install-desktop
 install-desktop:
@@ -95,16 +98,22 @@ $(UPDATE_FILE): $(INSTALL_LOC)
 		$(UPDATE_FILE)
 	$(SUDO) chmod +x $(UPDATE_FILE)
 
-$(SETTINGS_FILE): $(INSTALL_LOC) custodian-solution
-	cp custodian-solution/settings.json $(SETTINGS_FILE)
+$(SETTINGS_FILE): $(INSTALL_LOC) $(SETTINGS_IN)
+	cp $(SETTINGS_IN) $(SETTINGS_FILE)
 
-$(DOCKER_COMPOSE_FILE): $(RUST_ENV) $(INSTALL_LOC) custodian-solution
-	. $(RUST_ENV) && \
-		make -C custodian-solution compose
-	cp custodian-solution/docker-compose.yml $(DOCKER_COMPOSE_FILE)
+$(DOCKER_COMPOSE_FILE): $(INSTALL_LOC) $(DOCKER_COMPOSE_IN)
+	cp $(DOCKER_COMPOSE_IN) $(DOCKER_COMPOSE_FILE)
 
 $(INSTALL_LOC):
 	mkdir -p $(INSTALL_LOC)
+
+$(DOCKER_COMPOSE_IN):
+	@echo "could not find $(DOCKER_COMPOSE_IN)"
+	@exit 1
+
+$(SETTINGS_IN):
+	@echo "could not find $(SETTINGS_IN)"
+	@exit 1
 
 .PHONY: clean-dam
 clean-dam:
@@ -113,17 +122,7 @@ clean-dam:
 	fi
 
 .PHONY: rebuild-dam
-rebuild-dam: clean-dam clean-custodian-solution dam-files
-
-
-custodian-solution:
-	git clone -b release --recurse-submodules git@github.com:RiddleAndCode/custodian-solution.git
-
-.PHONY: clean-custodian-solution
-clean-custodian-solution:
-	if [ -d custodian-solution ]; then \
-		rm -rf custodian-solution; \
-	fi
+rebuild-dam: clean-dam dam-files
 
 .PHONY: service
 service: dam-scripts $(SERVICE_FILE)
@@ -239,9 +238,6 @@ apt-deps:
 		libprotobuf-dev \
 		mokutil
 
-$(RUST_ENV):
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-
 .PHONY: connect-wifi
 connect-wifi: connect-wifi-deps
 	$(SUDO) systemctl enable NetworkManager
@@ -255,4 +251,4 @@ connect-wifi-deps:
 	$(SUDO) apt-get install -y network-manager
 
 $(OUT_DIR):
-	mkdir -p $(OUT_DIR);
+	mkdir -p $(OUT_DIR)

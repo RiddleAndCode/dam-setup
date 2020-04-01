@@ -3,3 +3,5 @@ linux-sgx-driver
 custodian-solution
 MOK.*
 .out
+docker-compose.yml
+settings.json
