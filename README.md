@@ -22,8 +22,9 @@ Run `make` for more info
     * Install OpenSSH server
 * Login / ssh into box
 * `sudo apt install make`
-* `git clone git@github.com:RiddleAndCode/dam-setup.git`
+* `git clone -b dcap https://github.com/RiddleAndCode/dam-setup.git`
 * `cd dam-setup`
+* Copy in the `settings.json` and the `docker-compose.yml` sent to you into `~/dam-setup/settings.json` and `~/dam-setup/docker-compose.yml` respectively
 * Part 1
     * `make part1`
     * May ask you to enter a MOK password for the Secure Boot configuration
